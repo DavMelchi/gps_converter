@@ -1,0 +1,3 @@
+solara
+pandas
+lat-lon-parser
