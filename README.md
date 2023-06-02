@@ -17,4 +17,4 @@ Contributions are welcome! If you find any issues or have suggestions for improv
 
 ## Acknowledgements
 
-Solara Coordinate Converter is built upon the excellent Solara.<https://github.com/widgetti/solara>
+Coordinate Converter is built upon the excellent Solara.<https://github.com/widgetti/solara>
