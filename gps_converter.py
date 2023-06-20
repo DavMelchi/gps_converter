@@ -4,6 +4,9 @@ import os
 import solara
 from solara.components.file_drop import FileDrop
 from lat_lon_parser import parse,to_str_deg_min_sec
+import geopandas as gpd
+import leafmap.leafmap as leafmap
+from leafmap.toolbar import change_basemap
 
 
 class State:
@@ -15,6 +18,8 @@ class State:
     longitude = solara.reactive(cast(Optional[str],""))
     extension_check = solara.reactive(True)
     error_message = solara.reactive("")
+    gdfs = solara.reactive(cast(dict[str, gpd.GeoDataFrame], None))
+
 
     @staticmethod
     def load_from_file(file):
@@ -34,6 +39,7 @@ class State:
         State.longitude.value = str("")
         State.option.value = str("")
         State.error_message.value =str("")
+        State.gdfs.value =None
 
     @staticmethod
     def convert ():
@@ -58,6 +64,44 @@ class State:
             State.df.value = df
             State.dff.value  = State.df.value
             
+            if State.option.value =="Decimal":
+                long = "converted_longitude"
+                lat = "converted_latitude"
+            elif State.option.value =="Deg_Min_Sec":
+                long = str(State.longitude.value)
+                lat= str(State.latitude.value)
+            gdf2 = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df[long], df[lat]))
+            State.gdfs.value= {'layer 1':gdf2}
+
+
+
+@solara.component
+def map_component():
+    with solara.Div() as main:
+
+        if State.gdfs.value is not None:
+
+            class Map(leafmap.Map):
+                def __init__(self, **kwargs):
+                    super().__init__(**kwargs)
+                    self.add_basemap("Esri.WorldTopoMap")
+                    for layer_name, gdf in State.gdfs.value.items():
+                        self.add_gdf(
+                            gdf,
+                            layer_name=layer_name,
+                            zoom_to_layer=False,
+                        )
+                    change_basemap(self)
+
+            solara.Card(title="Map", children=[Map.element()])
+
+            # for layer_name, gdf in State.gdfs.value.items():
+            #     with solara.Card(title=layer_name):
+            #         solara.DataFrame(
+            #             pd.DataFrame(gdf),
+            #         )
+    return main
+
 @solara.component
 def Page():
     df = State.df.value
@@ -86,10 +130,10 @@ def Page():
                                 return State.dff.value.to_csv(index=False)
                             solara.FileDownload(get_data, label=f"Download {len(State.dff.value):,} converted coordinates", filename="converted.csv",)
 
-
     if State.df.value is not None:
         with solara.Column():
-            solara.DataFrame(State.df.value)
+            solara.DataFrame(State.df.value, items_per_page=10)
+            map_component()
             if State.error_message.value != "":
                 solara.Warning(State.error_message.value)
     else:
